@@ -385,6 +385,12 @@ func (s *ClusterScope) SubnetSpecs() []azure.ASOResourceSpecGetter[*asonetworkv1
 	subnetSpecs := make([]azure.ASOResourceSpecGetter[*asonetworkv1api20201101.VirtualNetworksSubnet], 0, numberOfSubnets)
 
 	for _, subnet := range s.AzureCluster.Spec.NetworkSpec.Subnets {
+		// Only set NAT Gateway name if it's actually enabled (not a sentinel value)
+		natGatewayName := ""
+		if subnet.IsNatGatewayEnabled() {
+			natGatewayName = subnet.NatGateway.Name
+		}
+
 		subnetSpec := &subnets.SubnetSpec{
 			Name:              subnet.Name,
 			ResourceGroup:     s.ResourceGroup(),
@@ -395,7 +401,7 @@ func (s *ClusterScope) SubnetSpecs() []azure.ASOResourceSpecGetter[*asonetworkv1
 			IsVNetManaged:     s.IsVnetManaged(),
 			RouteTableName:    subnet.RouteTable.Name,
 			SecurityGroupName: subnet.SecurityGroup.Name,
-			NatGatewayName:    subnet.NatGateway.Name,
+			NatGatewayName:    natGatewayName,
 			ServiceEndpoints:  subnet.ServiceEndpoints,
 		}
 		subnetSpecs = append(subnetSpecs, subnetSpec)

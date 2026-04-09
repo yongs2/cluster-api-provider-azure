@@ -875,7 +875,14 @@ func (n *NetworkSpec) UpdateSubnet(subnet SubnetSpec, role SubnetRole) {
 
 // IsNatGatewayEnabled returns whether or not a NAT gateway is enabled on the subnet.
 func (s SubnetSpec) IsNatGatewayEnabled() bool {
-	return s.NatGateway.Name != ""
+	// Support sentinel values to explicitly disable NAT Gateway
+	if s.NatGateway.Name == "" ||
+		s.NatGateway.Name == "none" ||
+		s.NatGateway.Name == "-" ||
+		s.NatGateway.Name == "disabled" {
+		return false
+	}
+	return true
 }
 
 // IsIPv6Enabled returns whether or not IPv6 is enabled on the subnet.

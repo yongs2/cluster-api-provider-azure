@@ -155,14 +155,14 @@ func (s *SubnetSpec) setNodeSubnetDefaults(clusterName string, index int) {
 		s.RouteTable.Name = generateNodeRouteTableName(clusterName)
 	}
 
-	// NAT gateway only supports the use of IPv4 public IP addresses for outbound connectivity.
-	// So default use the NAT gateway for outbound traffic in IPv4 cluster instead of loadbalancer.
-	// We assume that if the ID is set, the subnet already exists so we shouldn't add a NAT gateway.
+	// Also, allow users to disable NAT Gateway by setting name to sentinel values.
 	if !s.IsIPv6Enabled() && s.ID == "" {
 		if s.NatGateway.Name == "" {
 			s.NatGateway.Name = withIndex(generateNatGatewayName(clusterName), index)
 		}
-		if s.NatGateway.NatGatewayIP.Name == "" {
+		// Only create NAT Gateway IP if NAT Gateway is actually enabled (not a sentinel value)
+		// This prevents creating resources for disabled NAT Gateways
+		if s.IsNatGatewayEnabled() && s.NatGateway.NatGatewayIP.Name == "" {
 			s.NatGateway.NatGatewayIP.Name = generateNatGatewayIPName(s.NatGateway.Name)
 		}
 	}
