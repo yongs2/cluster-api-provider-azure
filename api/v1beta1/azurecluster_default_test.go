@@ -26,6 +26,87 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+// createNATGatewaySentinelTest creates a test case for NAT Gateway sentinel values.
+// All sentinel values should result in NAT Gateway being disabled (name and IP set to empty strings).
+func createNATGatewaySentinelTest(testName, sentinelValue string) struct {
+	name    string
+	cluster *AzureCluster
+	output  *AzureCluster
+} {
+	return struct {
+		name    string
+		cluster *AzureCluster
+		output  *AzureCluster
+	}{
+		name: testName,
+		cluster: &AzureCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "cluster-test",
+			},
+			Spec: AzureClusterSpec{
+				NetworkSpec: NetworkSpec{
+					Subnets: Subnets{
+						{
+							SubnetClassSpec: SubnetClassSpec{
+								Role: SubnetControlPlane,
+								Name: "cluster-test-controlplane-subnet",
+							},
+						},
+						{
+							SubnetClassSpec: SubnetClassSpec{
+								Role: SubnetNode,
+								Name: "cluster-test-node-subnet",
+							},
+							NatGateway: NatGateway{
+								NatGatewayClassSpec: NatGatewayClassSpec{
+									Name: sentinelValue,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		output: &AzureCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "cluster-test",
+			},
+			Spec: AzureClusterSpec{
+				NetworkSpec: NetworkSpec{
+					Subnets: Subnets{
+						{
+							SubnetClassSpec: SubnetClassSpec{
+								Role:       SubnetControlPlane,
+								CIDRBlocks: []string{DefaultControlPlaneSubnetCIDR},
+								Name:       "cluster-test-controlplane-subnet",
+							},
+							SecurityGroup: SecurityGroup{Name: "cluster-test-controlplane-nsg"},
+							RouteTable:    RouteTable{},
+						},
+						{
+							SubnetClassSpec: SubnetClassSpec{
+								Role:       SubnetNode,
+								CIDRBlocks: []string{DefaultNodeSubnetCIDR},
+								Name:       "cluster-test-node-subnet",
+							},
+							SecurityGroup: SecurityGroup{Name: "cluster-test-node-nsg"},
+							RouteTable:    RouteTable{Name: "cluster-test-node-routetable"},
+							NatGateway: NatGateway{
+								NatGatewayClassSpec: NatGatewayClassSpec{
+									Name: sentinelValue,
+								},
+								NatGatewayIP: PublicIPSpec{
+									Name: "",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func TestResourceGroupDefault(t *testing.T) {
 	cases := map[string]struct {
 		cluster *AzureCluster
@@ -1065,6 +1146,9 @@ func TestSubnetDefaults(t *testing.T) {
 				},
 			},
 		},
+		createNATGatewaySentinelTest("node subnet with NAT gateway name set to 'none' sentinel", "none"),
+		createNATGatewaySentinelTest("node subnet with NAT gateway name set to '-' sentinel", "-"),
+		createNATGatewaySentinelTest("node subnet with NAT gateway name set to 'disabled' sentinel", "disabled"),
 	}
 
 	for _, c := range cases {
